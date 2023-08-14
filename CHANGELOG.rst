@@ -2,8 +2,8 @@
 Changelog for package behaviortree_cpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+3.8.5 (2023-08-14)
+------------------
 * fixing issue `#623 <https://github.com/BehaviorTree/BehaviorTree.CPP/issues/623>`_: port type check backported from v4
 * add failing test
 * Contributors: Davide Faconti
