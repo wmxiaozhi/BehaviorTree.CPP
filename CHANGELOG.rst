@@ -2,6 +2,12 @@
 Changelog for package behaviortree_cpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fixing issue `#623 <https://github.com/BehaviorTree/BehaviorTree.CPP/issues/623>`_: port type check backported from v4
+* add failing test
+* Contributors: Davide Faconti
+
 3.8.4 (2023-06-28)
 ------------------
 * Update ros2.yaml
