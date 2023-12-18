@@ -32,7 +32,7 @@ static const char* xml_tree = R"(
 // clang-format on
 
 
-void BlackboardDeepCopy(const Blackboard& src, Blackboard& dst)
+void BlackboardClone(const Blackboard& src, Blackboard& dst)
 {
   dst.clear();
   for(auto const key_name: src.getKeys())
@@ -53,7 +53,7 @@ std::vector<Blackboard::Ptr> BlackboardBackup(const BT::Tree& tree)
   for(const auto& sub: tree.subtrees)
   {
     bb.push_back( BT::Blackboard::create() );
-    BlackboardDeepCopy(*sub->blackboard, *bb.back());
+    BlackboardClone(*sub->blackboard, *bb.back());
   }
   return bb;
 }
@@ -64,7 +64,7 @@ void BlackboardRestore(const std::vector<Blackboard::Ptr>& backup, BT::Tree& tre
   assert(backup.size() == tree.subtrees.size());
   for(size_t i=0; i<tree.subtrees.size(); i++)
   {
-    BlackboardDeepCopy(*(backup[i]), *(tree.subtrees[i]->blackboard));
+    BlackboardClone(*(backup[i]), *(tree.subtrees[i]->blackboard));
   }
 }
 
@@ -78,11 +78,10 @@ int main()
   auto tree = factory.createTree("MainTree");
 
   const auto backup = BlackboardBackup(tree);
-
   tree.tickWhileRunning();
 
+  // execute again as it was the first time.
   BlackboardRestore(backup, tree);
-
   tree.tickWhileRunning();
 
   return 0;
