@@ -10,18 +10,16 @@
  *  But this time we also show how to connect
  */
 
-// A custom structuree that I want to visualize in Groot2
+// A custom struct  that I want to visualize in Groot2
 struct Position2D {
   double x;
   double y;
 };
 
-// Allows Position2D to be visualized in Groot2
-// You still need BT::RegisterJsonDefinition<Position2D>(PositionToJson)
-void PositionToJson(nlohmann::json& j, const Position2D& p)
+BT_JSON_CONVERTER(Position2D, pos)
 {
-  j["x"] = p.x;
-  j["y"] = p.y;
+  add_field("x", &pos.x);
+  add_field("y", &pos.y);
 }
 
 // Simple Action that updates an instance of Position2D in the blackboard
@@ -97,7 +95,7 @@ int main()
   factory.registerBehaviorTreeFromText(xml_text);
 
   // Add this to allow Groot2 to visualize your custom type
-  BT::RegisterJsonDefinition<Position2D>(PositionToJson);
+  BT::RegisterJsonDefinition<Position2D>();
 
   auto tree = factory.createTree("MainTree");
 

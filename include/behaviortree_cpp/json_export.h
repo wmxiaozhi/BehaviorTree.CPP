@@ -9,7 +9,7 @@
 namespace BT {
 
 /**
-*  To add new type, you must follow these isntructions:
+*  To add new type to the JSON library, you should follow these isntructions:
 *    https://json.nlohmann.me/features/arbitrary_types/
 *
 *  Considering for instance the type:
@@ -24,9 +24,8 @@ namespace BT {
 *   void to_json(nlohmann::json& j, const Point2D& point);
 *   void from_json(const nlohmann::json& j, Point2D& point);
 *
-*  To avoir repeating yourself, we provide the macro BT_JSON_CONVERTION
-*  that implements both those function, at once.
-*  Usage:
+*  To avoid repeating yourself, we provide the macro BT_JSON_CONVERTION
+*  that implements both those function, at once. Usage:
 *
 *  BT_JSON_CONVERTER(Point2D, point)
 *  {
@@ -34,9 +33,9 @@ namespace BT {
 *     add_field("y", &point.y);
 *  }
 *
-*  Later, you MUST register the type in main using:
+*  Later, you MUST register the type using:
 *
-*   RegisterJsonDefinition<Point2D>();
+*  BT::RegisterJsonDefinition<Point2D>();
 */
 
 //-----------------------------------------------------------------------------------
