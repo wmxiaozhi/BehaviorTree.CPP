@@ -3,6 +3,8 @@
 
 //----------- Custom types ----------
 
+namespace TestTypes {
+
 struct Vector3D {
   double x;
   double y;
@@ -21,37 +23,39 @@ struct Pose3D {
   Quaternion3D rot;
 };
 
+BT_JSON_CONVERTER(Vector3D, v)
+{
+  add_field("x", &v.x);
+  add_field("y", &v.y);
+  add_field("z", &v.z);
+}
+
+BT_JSON_CONVERTER(Quaternion3D, v)
+{
+  add_field("w", &v.w);
+  add_field("x", &v.x);
+  add_field("y", &v.y);
+  add_field("z", &v.z);
+}
+
+BT_JSON_CONVERTER(Pose3D, v)
+{
+  add_field("pos", &v.pos);
+  add_field("rot", &v.rot);
+}
+
+} // namespace TestTypes
+
+
 //----------- JSON specialization ----------
 
-void to_json(nlohmann::json& j, const Vector3D& v)
-{
-  // compact syntax
-  j = {{"x", v.x}, {"y", v.y}, {"z", v.z}};
-}
-
-void to_json(nlohmann::json& j, const Quaternion3D& q)
-{
-  // verbose syntax
-  j["w"] = q.w;
-  j["x"] = q.x;
-  j["y"] = q.y;
-  j["z"] = q.z;
-}
-
-void to_json(nlohmann::json& j, const Pose3D& p)
-{
-  j = {{"pos", p.pos}, {"rot", p.rot}};
-}
-
-
-using namespace BT;
 
 TEST(JsonTest, Exporter)
 {
-  JsonExporter exporter;
+  BT::JsonExporter exporter;
 
-  Pose3D pose = { {1,2,3},
-                               {4,5,6,7} };
+  TestTypes::Pose3D pose = { {1,2,3},
+                            {4,5,6,7} };
 
   nlohmann::json json;
   exporter.toJson(BT::Any(69), json["int"]);
@@ -61,27 +65,23 @@ TEST(JsonTest, Exporter)
   ASSERT_FALSE( exporter.toJson(BT::Any(pose), json["pose"]) );
 
   // now it should work
-  exporter.addConverter<Pose3D>();
+  exporter.addConverter<TestTypes::Pose3D>();
   exporter.toJson(BT::Any(pose), json["pose"]);
 
-  nlohmann::json json_expected;
-  json_expected["int"] = 69;
-  json_expected["real"] = 3.14;
-
-  json_expected["pose"]["pos"]["x"] = 1;
-  json_expected["pose"]["pos"]["y"] = 2;
-  json_expected["pose"]["pos"]["z"] = 3;
-
-  json_expected["pose"]["rot"]["w"] = 4;
-  json_expected["pose"]["rot"]["x"] = 5;
-  json_expected["pose"]["rot"]["y"] = 6;
-  json_expected["pose"]["rot"]["z"] = 7;
-
-  ASSERT_EQ(json_expected, json);
-
   std::cout << json.dump(2) << std::endl;
+
+  ASSERT_EQ(json["int"],69);
+  ASSERT_EQ(json["real"], 3.14);
+
+  ASSERT_EQ(json["pose"]["__type"], "Pose3D");
+  ASSERT_EQ(json["pose"]["pos"]["x"], 1);
+  ASSERT_EQ(json["pose"]["pos"]["y"], 2);
+  ASSERT_EQ(json["pose"]["pos"]["z"], 3);
+
+  ASSERT_EQ(json["pose"]["rot"]["w"], 4);
+  ASSERT_EQ(json["pose"]["rot"]["x"], 5);
+  ASSERT_EQ(json["pose"]["rot"]["y"], 6);
+  ASSERT_EQ(json["pose"]["rot"]["z"], 7);
 }
-
-
 
 

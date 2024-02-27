@@ -26,8 +26,8 @@ bool JsonExporter::toJson(const Any &any, nlohmann::json &dst) const
   }
   else
   {
-    auto it = type_converters_.find(type);
-    if(it != type_converters_.end())
+    auto it = to_json_converters_.find(type);
+    if(it != to_json_converters_.end())
     {
       it->second(any, dst);
     }

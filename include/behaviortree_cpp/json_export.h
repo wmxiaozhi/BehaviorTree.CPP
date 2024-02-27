@@ -6,23 +6,46 @@
 // Use the version nlohmann::json embedded in BT.CPP
 #include "behaviortree_cpp/contrib/json.hpp"
 
-namespace BT
-{
+namespace BT {
 
 /**
 *  To add new type, you must follow these isntructions:
 *    https://json.nlohmann.me/features/arbitrary_types/
 *
-*  For instance the type Foo requires the implementation:
+*  Considering for instance the type:
 *
-*   void to_json(json& j, const Foo& f);
+*   struct Point2D {
+*     double x;
+*     double y;
+*   };
 *
-*  Later, you MUST register this calling:
+*  This would require the implementation of:
 *
-*   RegisterJsonDefinition<Foo>();
+*   void to_json(nlohmann::json& j, const Point2D& point);
+*   void from_json(const nlohmann::json& j, Point2D& point);
+*
+*  To avoir repeating yourself, we provide the macro BT_JSON_CONVERTION
+*  that implements both those function, at once.
+*  Usage:
+*
+*  BT_JSON_CONVERTER(Point2D, point)
+*  {
+*     add_field("x", &point.x);
+*     add_field("y", &point.y);
+*  }
+*
+*  Later, you MUST register the type in main using:
+*
+*   RegisterJsonDefinition<Point2D>();
 */
 
-class JsonExporter{
+//-----------------------------------------------------------------------------------
+
+/**
+*  Use RegisterJsonDefinition<Foo>();
+*/
+
+class JsonExporter {
 
   public:
   static JsonExporter& get() {
@@ -43,81 +66,78 @@ class JsonExporter{
     dst = val;
   }
 
-  /// Register new JSON converters with addConverter<Foo>(),
-  /// But works only if this function is implemented:
-  ///
-  ///    void nlohmann::to_json(nlohmann::json& destination, const Foo& foo)
-  template <typename T> void addConverter()
-  {
-    auto converter = [](const BT::Any& entry, nlohmann::json& dst) {
-      nlohmann::to_json(dst, entry.cast<T>());
-    };
-    type_converters_.insert( {typeid(T), std::move(converter)} );
-  }
+  /// Register new JSON converters with addConverter<Foo>().
+  /// You should have used first the macro BT_JSON_CONVERTER
+  template <typename T> void addConverter();
 
-  template <typename T> void addConverter(std::function<void(nlohmann::json&, const T&)> func)
-  {
-    auto converter = [func](const BT::Any& entry, nlohmann::json& dst) {
-      func(dst, entry.cast<T>());
-    };
-    type_converters_.insert( {typeid(T), std::move(converter)} );
-  }
-
-  /// Register directly your own converter.
-  template <typename T>
-  void addConverter(std::function<void(const T&, nlohmann::json&)> to_json)
-  {
-    auto converter = [=](const BT::Any& entry, nlohmann::json& dst) {
-      to_json(entry.cast<T>(), dst);
-    };
-    type_converters_.insert( {typeid(T), std::move(converter)} );
-  }
-
-  private:
+private:
 
   using ToJonConverter = std::function<void(const BT::Any&, nlohmann::json&)>;
-  std::unordered_map<std::type_index, ToJonConverter> type_converters_;
+  using FromJonConverter = std::function<BT::Any(const nlohmann::json&)>;
+
+  std::unordered_map<std::type_index, ToJonConverter> to_json_converters_;
+  std::unordered_map<std::string, FromJonConverter> from_json_converters_;
 };
 
-/* Function to use to register a specific implementation of nlohmann::to_json
+//-------------------------------------------------------------------
 
-  Example:
+template<typename T> inline
+void JsonExporter::addConverter()
+{
+  ToJonConverter to_converter = [](const BT::Any& entry, nlohmann::json& dst)
+  {
+    using namespace nlohmann;
+    to_json(dst, *const_cast<BT::Any&>(entry).castPtr<T>());
+  };
+  to_json_converters_.insert( {typeid(T), to_converter} );
 
-  namespace nlohmann {
-    void to_json(nlohmann::json& j, const Position2D& p)
-    {
-      j["x"] = p.x;
-      j["y"] = p.y;
-    }
-  } // namespace nlohmann
+  FromJonConverter from_converter = [](const nlohmann::json& dst) -> BT::Any
+  {
+    T value;
+    using namespace nlohmann;
+    from_json(dst, value);
+    return BT::Any(value);
+  };
 
-  // In you main function
-  RegisterJsonDefinition<Position2D>()
-*/
+  // we need to get the name of the type
+  nlohmann::json const js = T{};
+  auto const type_name = js.contains("__type") ?
+                             std::string(js["__type"]) :
+                             BT::demangle(typeid(T));
+
+  from_json_converters_.insert( {type_name, from_converter} );
+}
+
 template <typename T> inline void RegisterJsonDefinition()
 {
   JsonExporter::get().addConverter<T>();
 }
 
-/* Function to use to register a specific implementation of "to_json"
-
-  Example:
-
-  RegisterJsonDefinition([](nlohmann::json& j, const Position2D& p)
-    {
-      j["x"] = p.x;
-      j["y"] = p.y;
-    } );
-*/
-
-template <typename T> inline
-void RegisterJsonDefinition(std::function<void(nlohmann::json&, const T&)> func)
-{
-  JsonExporter::get().addConverter<T>(func);
-}
 
 nlohmann::json ExportBlackboardToJSON(BT::Blackboard& blackboard);
 
 } // namespace BT
 
+//------------------------------------------------
+//------------------------------------------------
+//------------------------------------------------
+
+// Macro to implement to_json() and from_json()
+
+#define BT_JSON_CONVERTER(Type, value) \
+template <class AddField> void _JsonTypeDefinition(Type&, AddField&); \
+\
+inline void to_json(nlohmann::json& js, const Type& p, bool add_type_name = false) { \
+  auto op = [&js](const char* name, auto* val) { to_json(js[name], *val); }; \
+  _JsonTypeDefinition(const_cast<Type&>(p), op); \
+  js["__type"] = #Type; \
+} \
+\
+inline void from_json(const nlohmann::json& js, Type& p) { \
+  auto op = [&js](const char* name, auto* v) { js.at(name).get_to(*v); }; \
+  _JsonTypeDefinition(p, op); \
+} \
+\
+template <class AddField> inline \
+void _JsonTypeDefinition(Type& value, AddField& add_field)\
 
