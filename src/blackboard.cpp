@@ -1,4 +1,5 @@
 #include "behaviortree_cpp/blackboard.h"
+#include "behaviortree_cpp/json_export.h"
 
 namespace BT
 {
@@ -222,6 +223,23 @@ Blackboard::createEntryImpl(const std::string& key, const TypeInfo& info)
   }
   storage_.insert( {key, entry} );
   return entry;
+}
+
+nlohmann::json ExportBlackboardToJSON(const Blackboard &blackboard)
+{
+  nlohmann::json dest;
+  for(auto entry_name: blackboard.getKeys())
+  {
+    std::string name(entry_name);
+    if(auto any_ref = blackboard.getAnyLocked(name))
+    {
+      if(auto any_ptr = any_ref.get())
+      {
+        JsonExporter::get().toJson(*any_ptr, dest[name]);
+      }
+    }
+  }
+  return dest;
 }
 
 }   // namespace BT

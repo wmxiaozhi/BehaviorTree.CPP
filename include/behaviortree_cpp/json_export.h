@@ -1,7 +1,7 @@
 #pragma once
 
 #include "behaviortree_cpp/utils/safe_any.hpp"
-#include "behaviortree_cpp/blackboard.h"
+#include "behaviortree_cpp/contrib/expected.hpp"
 
 // Use the version nlohmann::json embedded in BT.CPP
 #include "behaviortree_cpp/contrib/json.hpp"
@@ -60,6 +60,13 @@ class JsonExporter {
    */
   bool toJson(const BT::Any& any, nlohmann::json& destination) const;
 
+  using ExpectedAny = nonstd::expected_lite::expected<BT::Any, std::string>;
+
+  ExpectedAny fromJson(const nlohmann::json& source) const;
+
+  ExpectedAny fromJson(const nlohmann::json& source, std::type_index type) const;
+
+
   template <typename T>
   void toJson(const T& val, nlohmann::json& dst) const {
     dst = val;
@@ -75,8 +82,10 @@ private:
   using FromJonConverter = std::function<BT::Any(const nlohmann::json&)>;
 
   std::unordered_map<std::type_index, ToJonConverter> to_json_converters_;
-  std::unordered_map<std::string, FromJonConverter> from_json_converters_;
+  std::unordered_map<std::type_index, FromJonConverter> from_json_converters_;
+  std::unordered_map<std::string, std::type_index> type_names_;
 };
+
 
 //-------------------------------------------------------------------
 
@@ -100,20 +109,20 @@ void JsonExporter::addConverter()
 
   // we need to get the name of the type
   nlohmann::json const js = T{};
-  auto const type_name = js.contains("__type") ?
-                             std::string(js["__type"]) :
-                             BT::demangle(typeid(T));
+  // we insert both the name obtained from JSON and demangle
+  if(js.contains("__type"))
+  {
+    type_names_.insert( {std::string(js["__type"]), typeid(T)} );
+  }
+  type_names_.insert( {BT::demangle(typeid(T)), typeid(T)} );
 
-  from_json_converters_.insert( {type_name, from_converter} );
+  from_json_converters_.insert( {typeid(T), from_converter} );
 }
 
 template <typename T> inline void RegisterJsonDefinition()
 {
   JsonExporter::get().addConverter<T>();
 }
-
-
-nlohmann::json ExportBlackboardToJSON(BT::Blackboard& blackboard);
 
 } // namespace BT
 

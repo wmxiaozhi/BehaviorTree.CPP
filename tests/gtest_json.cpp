@@ -1,21 +1,22 @@
 #include <gtest/gtest.h>
 #include "behaviortree_cpp/json_export.h"
+#include "behaviortree_cpp/basic_types.h"
 
 //----------- Custom types ----------
 
 namespace TestTypes {
 
 struct Vector3D {
-  double x;
-  double y;
-  double z;
+  double x = 0;
+  double y = 0;
+  double z = 0;
 };
 
 struct Quaternion3D {
-  double w;
-  double x;
-  double y;
-  double z;
+  double w = 1;
+  double x = 0;
+  double y = 0;
+  double z = 0;
 };
 
 struct Pose3D {
@@ -49,10 +50,21 @@ BT_JSON_CONVERTER(Pose3D, v)
 
 //----------- JSON specialization ----------
 
+class JsonTest : public testing::Test {
+protected:
 
-TEST(JsonTest, Exporter)
+  JsonTest() {
+    BT::JsonExporter& exporter = BT::JsonExporter::get();
+    exporter.addConverter<TestTypes::Pose3D>();
+    exporter.addConverter<TestTypes::Vector3D>();
+    exporter.addConverter<TestTypes::Quaternion3D>();
+  }
+};
+
+
+TEST_F(JsonTest, TwoWaysConversion)
 {
-  BT::JsonExporter exporter;
+  BT::JsonExporter& exporter = BT::JsonExporter::get();
 
   TestTypes::Pose3D pose = { {1,2,3},
                             {4,5,6,7} };
@@ -60,17 +72,11 @@ TEST(JsonTest, Exporter)
   nlohmann::json json;
   exporter.toJson(BT::Any(69), json["int"]);
   exporter.toJson(BT::Any(3.14), json["real"]);
-
-  // expected to throw, because we haven't called addConverter()
-  ASSERT_FALSE( exporter.toJson(BT::Any(pose), json["pose"]) );
-
-  // now it should work
-  exporter.addConverter<TestTypes::Pose3D>();
   exporter.toJson(BT::Any(pose), json["pose"]);
 
   std::cout << json.dump(2) << std::endl;
 
-  ASSERT_EQ(json["int"],69);
+  ASSERT_EQ(json["int"], 69);
   ASSERT_EQ(json["real"], 3.14);
 
   ASSERT_EQ(json["pose"]["__type"], "Pose3D");
@@ -82,6 +88,32 @@ TEST(JsonTest, Exporter)
   ASSERT_EQ(json["pose"]["rot"]["x"], 5);
   ASSERT_EQ(json["pose"]["rot"]["y"], 6);
   ASSERT_EQ(json["pose"]["rot"]["z"], 7);
+
+  // check the two-ways transform, i.e. "from_json"
+  auto pose2 = exporter.fromJson(json["pose"])->cast<TestTypes::Pose3D>();
+
+  ASSERT_EQ(pose.pos.x, pose2.pos.x);
+  ASSERT_EQ(pose.pos.y, pose2.pos.y);
+  ASSERT_EQ(pose.pos.z, pose2.pos.z);
+
+  ASSERT_EQ(pose.rot.w, pose2.rot.w);
+  ASSERT_EQ(pose.rot.x, pose2.rot.x);
+  ASSERT_EQ(pose.rot.y, pose2.rot.y);
+  ASSERT_EQ(pose.rot.z, pose2.rot.z);
+
+  auto num = exporter.fromJson(json["int"])->cast<int>();
+  ASSERT_EQ(num, 69);
+  auto real = exporter.fromJson(json["real"])->cast<double>();
+  ASSERT_EQ(real, 3.14);
+
+
+}
+
+TEST_F(JsonTest, ConvertFromString)
+{
+  TestTypes::Vector3D pose3;
+  auto const test_json = R"(json:{"x":2, "y":4, "z":6})";
+  ASSERT_NO_THROW(pose3 = BT::convertFromString<TestTypes::Vector3D>(test_json));
 }
 
 

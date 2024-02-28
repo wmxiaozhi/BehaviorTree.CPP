@@ -1,4 +1,6 @@
 #include "behaviortree_cpp/basic_types.h"
+#include "behaviortree_cpp/json_export.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <clocale>
@@ -398,6 +400,17 @@ bool IsAllowedPortName(StringView str)
     return false;
   }
   return true;
+}
+
+Any convertFromJSON(StringView json_text, std::type_index type)
+{
+  nlohmann::json json = nlohmann::json::parse(json_text);
+  auto res = JsonExporter::get().fromJson(json, type);
+  if(!res)
+  {
+    throw std::runtime_error(res.error());
+  }
+  return *res;
 }
 
 }   // namespace BT

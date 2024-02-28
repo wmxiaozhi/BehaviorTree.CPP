@@ -65,6 +65,23 @@ using KeyValueVector = std::vector<std::pair<std::string, std::string>>;
 struct AnyTypeAllowed
 {};
 
+/**
+ * @brief convertFromJSON will parse a json string and use JsonExporter
+ * to convert its content to a given type. it will work only if
+ * the type was previously registered. May throw if it fails.
+ *
+ * @param json_text a valid JSON string
+ * @param type   you must specify the typeid()
+ * @return the object, wrapped in Any.
+ */
+[[nodiscard]] Any convertFromJSON(StringView json_text, std::type_index type);
+
+/// Same as the non template version, but with automatic casting
+template <typename T> [[nodiscard]]
+inline T convertFromJSON(StringView str)
+{
+  return convertFromJSON(str, typeid(T)).cast<T>();
+}
 
 /**
  * convertFromString is used to convert a string into a custom type.
@@ -75,8 +92,15 @@ struct AnyTypeAllowed
  * If you have a custom type, you need to implement the corresponding template specialization.
  */
 template <typename T> [[nodiscard]]
-inline T convertFromString(StringView /*str*/)
+inline T convertFromString(StringView str)
 {
+  // if string starts with "json:{", try to parse it as json
+  if(str.size() > 6 && std::strncmp("json:{", str.data(), 6) == 0)
+  {
+    str.remove_prefix(5);
+    return convertFromJSON<T>(str);
+  }
+
   auto type_name = BT::demangle(typeid(T));
 
   std::cerr << "You (maybe indirectly) called BT::convertFromString() for type ["

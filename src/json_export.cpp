@@ -38,21 +38,59 @@ bool JsonExporter::toJson(const Any &any, nlohmann::json &dst) const
   return true;
 }
 
-nlohmann::json ExportBlackboardToJSON(Blackboard &blackboard)
+JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source) const
 {
-  nlohmann::json dest;
-  for(auto entry_name: blackboard.getKeys())
+  if(source.is_null())
   {
-    std::string name(entry_name);
-    if(auto any_ref = blackboard.getAnyLocked(name))
-    {
-      if(auto any_ptr = any_ref.get())
-      {
-        JsonExporter::get().toJson(*any_ptr, dest[name]);
-      }
-    }
+    return nonstd::make_unexpected("json object is null");
   }
-  return dest;
+  if( source.is_string())
+  {
+    return BT::Any(source.get<std::string>());
+  }
+  if( source.is_number_unsigned())
+  {
+    return BT::Any(source.get<uint64_t>());
+  }
+  if( source.is_number_integer())
+  {
+    return BT::Any(source.get<int64_t>());
+  }
+  if( source.is_number_float())
+  {
+    return BT::Any(source.get<double>());
+  }
+  if( source.is_boolean())
+  {
+    return BT::Any(source.get<bool>());
+  }
+
+  if(!source.contains("__type"))
+  {
+    return nonstd::make_unexpected("Missing field '__type'");
+  }
+  auto type_it = type_names_.find(source["__type"]);
+  if(type_it == type_names_.end())
+  {
+    return nonstd::make_unexpected("Type not found in registered list");
+  }
+  auto func_it = from_json_converters_.find(type_it->second);
+  if(func_it == from_json_converters_.end())
+  {
+    return nonstd::make_unexpected("Type not found in registered list");
+  }
+  return func_it->second(source);
 }
+
+JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source, std::type_index type) const
+{
+  auto func_it = from_json_converters_.find(type);
+  if(func_it == from_json_converters_.end())
+  {
+    return nonstd::make_unexpected("Type not found in registered list");
+  }
+  return func_it->second(source);
+}
+
 
 }
