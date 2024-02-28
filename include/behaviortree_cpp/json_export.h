@@ -1,5 +1,6 @@
 #pragma once
 
+#include "behaviortree_cpp/basic_types.h"
 #include "behaviortree_cpp/utils/safe_any.hpp"
 #include "behaviortree_cpp/contrib/expected.hpp"
 
@@ -56,21 +57,26 @@ class JsonExporter {
    * @brief toJson adds the content of "any" to the JSON "destination".
    *
    * It will return false if the conversion toJson is not possible
-   * ( you might need to register the converter with addConverter() ).
+   * If it is a custom type, you might register it first with addConverter().
    */
   bool toJson(const BT::Any& any, nlohmann::json& destination) const;
 
-  using ExpectedAny = nonstd::expected_lite::expected<BT::Any, std::string>;
+  /// This information is needed to create a BT::Blackboard::entry
+  using Entry = std::pair<BT::Any, BT::TypeInfo>;
 
-  ExpectedAny fromJson(const nlohmann::json& source) const;
+  using ExpectedEntry = nonstd::expected_lite::expected<Entry, std::string>;
 
-  ExpectedAny fromJson(const nlohmann::json& source, std::type_index type) const;
+  /**
+   * @brief fromJson will return an Entry (value wrappedn in Any + TypeInfo)
+   * from a json source.
+   * If it is a custom type, you might register it first with addConverter().
+   * @param source
+   * @return
+   */
+  ExpectedEntry fromJson(const nlohmann::json& source) const;
 
-
-  template <typename T>
-  void toJson(const T& val, nlohmann::json& dst) const {
-    dst = val;
-  }
+  /// Same as the other, but providing the specific type
+  ExpectedEntry fromJson(const nlohmann::json& source, std::type_index type) const;
 
   /// Register new JSON converters with addConverter<Foo>().
   /// You should have used first the macro BT_JSON_CONVERTER
@@ -79,11 +85,11 @@ class JsonExporter {
 private:
 
   using ToJonConverter = std::function<void(const BT::Any&, nlohmann::json&)>;
-  using FromJonConverter = std::function<BT::Any(const nlohmann::json&)>;
+  using FromJonConverter = std::function<Entry(const nlohmann::json&)>;
 
   std::unordered_map<std::type_index, ToJonConverter> to_json_converters_;
   std::unordered_map<std::type_index, FromJonConverter> from_json_converters_;
-  std::unordered_map<std::string, std::type_index> type_names_;
+  std::unordered_map<std::string, BT::TypeInfo> type_names_;
 };
 
 
@@ -99,12 +105,12 @@ void JsonExporter::addConverter()
   };
   to_json_converters_.insert( {typeid(T), to_converter} );
 
-  FromJonConverter from_converter = [](const nlohmann::json& dst) -> BT::Any
+  FromJonConverter from_converter = [](const nlohmann::json& dst) -> Entry
   {
     T value;
     using namespace nlohmann;
     from_json(dst, value);
-    return BT::Any(value);
+    return {BT::Any(value), BT::TypeInfo::Create<T>()};
   };
 
   // we need to get the name of the type
@@ -112,9 +118,9 @@ void JsonExporter::addConverter()
   // we insert both the name obtained from JSON and demangle
   if(js.contains("__type"))
   {
-    type_names_.insert( {std::string(js["__type"]), typeid(T)} );
+    type_names_.insert( {std::string(js["__type"]), BT::TypeInfo::Create<T>()} );
   }
-  type_names_.insert( {BT::demangle(typeid(T)), typeid(T)} );
+  type_names_.insert( {BT::demangle(typeid(T)), BT::TypeInfo::Create<T>()} );
 
   from_json_converters_.insert( {typeid(T), from_converter} );
 }

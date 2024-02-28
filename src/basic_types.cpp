@@ -410,7 +410,7 @@ Any convertFromJSON(StringView json_text, std::type_index type)
   {
     throw std::runtime_error(res.error());
   }
-  return *res;
+  return res->first;
 }
 
 }   // namespace BT

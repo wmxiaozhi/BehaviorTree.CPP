@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/json_export.h"
 #include "behaviortree_cpp/basic_types.h"
 
@@ -90,7 +91,7 @@ TEST_F(JsonTest, TwoWaysConversion)
   ASSERT_EQ(json["pose"]["rot"]["z"], 7);
 
   // check the two-ways transform, i.e. "from_json"
-  auto pose2 = exporter.fromJson(json["pose"])->cast<TestTypes::Pose3D>();
+  auto pose2 = exporter.fromJson(json["pose"])->first.cast<TestTypes::Pose3D>();
 
   ASSERT_EQ(pose.pos.x, pose2.pos.x);
   ASSERT_EQ(pose.pos.y, pose2.pos.y);
@@ -101,19 +102,43 @@ TEST_F(JsonTest, TwoWaysConversion)
   ASSERT_EQ(pose.rot.y, pose2.rot.y);
   ASSERT_EQ(pose.rot.z, pose2.rot.z);
 
-  auto num = exporter.fromJson(json["int"])->cast<int>();
+  auto num = exporter.fromJson(json["int"])->first.cast<int>();
   ASSERT_EQ(num, 69);
-  auto real = exporter.fromJson(json["real"])->cast<double>();
+  auto real = exporter.fromJson(json["real"])->first.cast<double>();
   ASSERT_EQ(real, 3.14);
-
-
 }
 
 TEST_F(JsonTest, ConvertFromString)
 {
-  TestTypes::Vector3D pose3;
-  auto const test_json = R"(json:{"x":2, "y":4, "z":6})";
-  ASSERT_NO_THROW(pose3 = BT::convertFromString<TestTypes::Vector3D>(test_json));
+  TestTypes::Vector3D vect;
+  auto const test_json = R"(json:{"x":2.1, "y":4.2, "z":6.3})";
+  ASSERT_NO_THROW(vect = BT::convertFromString<TestTypes::Vector3D>(test_json));
+
+  ASSERT_EQ(vect.x, 2.1);
+  ASSERT_EQ(vect.y, 4.2);
+  ASSERT_EQ(vect.z, 6.3);
+}
+
+TEST_F(JsonTest, BlackboardInOut)
+{
+  auto bb = BT::Blackboard::create();
+  bb->set("int", 42);
+  bb->set("real", 3.14);
+  bb->set("vect", TestTypes::Vector3D{1.1, 2.2, 3.3});
+
+  auto json = ExportBlackboardToJSON(*bb);
+  std::cout << json.dump(2) << std::endl;
+
+  auto bb_out = BT::Blackboard::create();
+  ImportBlackboardFromJSON(json, *bb_out);
+
+  ASSERT_EQ(bb_out->get<int>("int"), 42);
+  ASSERT_EQ(bb_out->get<double>("real"), 3.14);
+
+  auto vect_out = bb_out->get<TestTypes::Vector3D>("vect");
+  ASSERT_EQ(vect_out.x, 1.1);
+  ASSERT_EQ(vect_out.y, 2.2);
+  ASSERT_EQ(vect_out.z, 3.3);
 }
 
 

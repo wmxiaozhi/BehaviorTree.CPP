@@ -38,7 +38,7 @@ bool JsonExporter::toJson(const Any &any, nlohmann::json &dst) const
   return true;
 }
 
-JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source) const
+JsonExporter::ExpectedEntry JsonExporter::fromJson(const nlohmann::json &source) const
 {
   if(source.is_null())
   {
@@ -46,23 +46,28 @@ JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source) c
   }
   if( source.is_string())
   {
-    return BT::Any(source.get<std::string>());
+    return Entry{BT::Any(source.get<std::string>()),
+                 BT::TypeInfo::Create<std::string>()};
   }
   if( source.is_number_unsigned())
   {
-    return BT::Any(source.get<uint64_t>());
+    return Entry{BT::Any(source.get<uint64_t>()),
+                 BT::TypeInfo::Create<uint64_t>()};
   }
   if( source.is_number_integer())
   {
-    return BT::Any(source.get<int64_t>());
+    return Entry{BT::Any(source.get<int64_t>()),
+                 BT::TypeInfo::Create<int64_t>()};
   }
   if( source.is_number_float())
   {
-    return BT::Any(source.get<double>());
+    return Entry{BT::Any(source.get<double>()),
+                 BT::TypeInfo::Create<double>()};
   }
   if( source.is_boolean())
   {
-    return BT::Any(source.get<bool>());
+    return Entry{BT::Any(source.get<bool>()),
+                 BT::TypeInfo::Create<bool>()};
   }
 
   if(!source.contains("__type"))
@@ -74,7 +79,7 @@ JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source) c
   {
     return nonstd::make_unexpected("Type not found in registered list");
   }
-  auto func_it = from_json_converters_.find(type_it->second);
+  auto func_it = from_json_converters_.find(type_it->second.type());
   if(func_it == from_json_converters_.end())
   {
     return nonstd::make_unexpected("Type not found in registered list");
@@ -82,7 +87,8 @@ JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source) c
   return func_it->second(source);
 }
 
-JsonExporter::ExpectedAny JsonExporter::fromJson(const nlohmann::json &source, std::type_index type) const
+JsonExporter::ExpectedEntry
+JsonExporter::fromJson(const nlohmann::json &source, std::type_index type) const
 {
   auto func_it = from_json_converters_.find(type);
   if(func_it == from_json_converters_.end())

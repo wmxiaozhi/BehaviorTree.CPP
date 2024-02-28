@@ -125,11 +125,11 @@ private:
 nlohmann::json ExportBlackboardToJSON(const Blackboard &blackboard);
 
 /**
- * @brief ImportBlackboardToJSON will append elements to the blackboard,
+ * @brief ImportBlackboardFromJSON will append elements to the blackboard,
  * using the values parsed from the JSON file created using ExportBlackboardToJSON.
  * Complex types must be registered with JsonExporter::get()
  */
-void ImportBlackboardToJSON(const nlohmann::json& json, Blackboard& blackboard);
+void ImportBlackboardFromJSON(const nlohmann::json& json, Blackboard& blackboard);
 
 
 //------------------------------------------------------

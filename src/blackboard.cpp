@@ -242,4 +242,20 @@ nlohmann::json ExportBlackboardToJSON(const Blackboard &blackboard)
   return dest;
 }
 
+void ImportBlackboardFromJSON(const nlohmann::json &json, Blackboard &blackboard)
+{
+  for (auto it = json.begin(); it != json.end(); ++it)
+  {
+    if(auto res = JsonExporter::get().fromJson(it.value()))
+    {
+      auto entry = blackboard.getEntry(it.key());
+      if(!entry) {
+        blackboard.createEntry(it.key(), res->second);
+        entry = blackboard.getEntry(it.key());
+      }
+      entry->value = res->first;
+    }
+  }
+}
+
 }   // namespace BT
