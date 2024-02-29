@@ -11,11 +11,16 @@
  */
 
 // A custom struct  that I want to visualize in Groot2
-struct Position2D {
+struct Position2D
+{
   double x;
   double y;
 };
 
+// This macro will generate the code that is needed to convert
+// the object to/from JSON.
+// You still need to call BT::RegisterJsonDefinition<Position2D>()
+// in main()
 BT_JSON_CONVERTER(Position2D, pos)
 {
   add_field("x", &pos.x);

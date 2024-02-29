@@ -1,21 +1,23 @@
 #pragma once
 
+#include "behaviortree_cpp/action_node.h"
 #include "behaviortree_cpp/json_export.h"
-#include "behaviortree_cpp/behavior_tree.h"
 
 // Custom type
 struct Pose2D
 {
-    double x, y, theta;
+  double x, y, theta;
 };
 
-// Use this to register this function into JsonExporter:
+// Add this to you main() to register this function into JsonExporter:
 //
 // BT::JsonExporter::get().addConverter<Pose2D>();
-inline void to_json(nlohmann::json& dest, const Pose2D& pose) {
-    dest["x"] = pose.x;
-    dest["y"] = pose.y;
-    dest["theta"] = pose.theta;
+
+BT_JSON_CONVERTER(Pose2D, pose)
+{
+  add_field("x", &pose.x);
+  add_field("y", &pose.y);
+  add_field("theta", &pose.theta);
 }
 
 
