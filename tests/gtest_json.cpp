@@ -121,12 +121,12 @@ TEST_F(JsonTest, ConvertFromString)
 
 TEST_F(JsonTest, BlackboardInOut)
 {
-  auto bb = BT::Blackboard::create();
-  bb->set("int", 42);
-  bb->set("real", 3.14);
-  bb->set("vect", TestTypes::Vector3D{1.1, 2.2, 3.3});
+  auto bb_in = BT::Blackboard::create();
+  bb_in->set("int", 42);
+  bb_in->set("real", 3.14);
+  bb_in->set("vect", TestTypes::Vector3D{1.1, 2.2, 3.3});
 
-  auto json = ExportBlackboardToJSON(*bb);
+  auto json = ExportBlackboardToJSON(*bb_in);
   std::cout << json.dump(2) << std::endl;
 
   auto bb_out = BT::Blackboard::create();
