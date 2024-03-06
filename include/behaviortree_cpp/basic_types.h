@@ -58,20 +58,40 @@ enum class PortDirection
 
 using StringView = std::string_view;
 
+bool StartWith(StringView str, StringView prefix);
+
 // vector of key/value pairs
 using KeyValueVector = std::vector<std::pair<std::string, std::string>>;
 
+/** Usage: given a function/method like this:
+ *
+ *     Expected<double> getAnswer();
+ *
+ * User code can check result and error message like this:
+ *
+ *     auto res = getAnswer();
+ *     if( res )
+ *     {
+ *         std::cout << "answer was: " << res.value() << std::endl;
+ *     }
+ *     else{
+ *         std::cerr << "failed to get the answer: " << res.error() << std::endl;
+ *     }
+ *
+ * */
+template <typename T>
+using Expected = nonstd::expected<T, std::string>;
 
 struct AnyTypeAllowed
 {};
 
 /**
  * @brief convertFromJSON will parse a json string and use JsonExporter
- * to convert its content to a given type. it will work only if
+ * to convert its content to a given type. It will work only if
  * the type was previously registered. May throw if it fails.
  *
  * @param json_text a valid JSON string
- * @param type   you must specify the typeid()
+ * @param type you must specify the typeid()
  * @return the object, wrapped in Any.
  */
 [[nodiscard]] Any convertFromJSON(StringView json_text, std::type_index type);
@@ -89,13 +109,17 @@ inline T convertFromJSON(StringView str)
  * This function is invoked under the hood by TreeNode::getInput(), but only when the
  * input port contains a string.
  *
- * If you have a custom type, you need to implement the corresponding template specialization.
+ * If you have a custom type, you need to implement the corresponding
+ * template specialization.
+ *
+ * If the string starts with the prefix "json:", it will
+ * fall back to convertFromJSON()
  */
 template <typename T> [[nodiscard]]
 inline T convertFromString(StringView str)
 {
   // if string starts with "json:{", try to parse it as json
-  if(str.size() > 6 && std::strncmp("json:{", str.data(), 6) == 0)
+  if(StartWith(str, "json:"))
   {
     str.remove_prefix(5);
     return convertFromJSON<T>(str);
@@ -196,6 +220,15 @@ constexpr bool IsConvertibleToString()
          std::is_convertible_v<T, std::string_view>;
 }
 
+Expected<std::string> toJsonString(const Any &value);
+
+
+/**
+ * @brief toStr is the reverse operation of convertFromString.
+ *
+ * If T is a custom type and there is no template specialization,
+ * it will try to fall back to toJsonString()
+ */
 template<typename T> [[nodiscard]]
 std::string toStr(const T& value)
 {
@@ -205,6 +238,11 @@ std::string toStr(const T& value)
   }
   else if constexpr(!std::is_arithmetic_v<T>)
   {
+    if(auto str = toJsonString(Any(value)))
+    {
+      return *str;
+    }
+
     throw LogicError(
         StrCat("Function BT::toStr<T>() not specialized for type [",
                BT::demangle(typeid(T)), "]")
@@ -251,25 +289,6 @@ using enable_if = typename std::enable_if<Predicate::value>::type*;
 
 template <typename Predicate>
 using enable_if_not = typename std::enable_if<!Predicate::value>::type*;
-
-/** Usage: given a function/method like this:
- *
- *     Expected<double> getAnswer();
- *
- * User code can check result and error message like this:
- *
- *     auto res = getAnswer();
- *     if( res )
- *     {
- *         std::cout << "answer was: " << res.value() << std::endl;
- *     }
- *     else{
- *         std::cerr << "failed to get the answer: " << res.error() << std::endl;
- *     }
- *
- * */
-template <typename T>
-using Expected = nonstd::expected<T, std::string>;
 
 #ifdef USE_BTCPP3_OLD_NAMES
 // note: we also use the name Optional instead of expected because it is more intuitive

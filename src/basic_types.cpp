@@ -413,4 +413,20 @@ Any convertFromJSON(StringView json_text, std::type_index type)
   return res->first;
 }
 
+Expected<std::string> toJsonString(const Any& value)
+{
+  nlohmann::json json;
+  if(JsonExporter::get().toJson(value, json))
+  {
+    return StrCat("json:", json.dump());
+  }
+  return nonstd::make_unexpected("toJsonString failed");
+}
+
+bool StartWith(StringView str, StringView prefix)
+{
+  return str.size() >= prefix.size() &&
+         strncmp(str.data(), prefix.data(), prefix.size()) == 0;
+}
+
 }   // namespace BT
