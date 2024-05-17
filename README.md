@@ -6,6 +6,29 @@
 [![ros2](https://github.com/BehaviorTree/BehaviorTree.CPP/workflows/ros2/badge.svg?branch=master)](https://github.com/BehaviorTree/BehaviorTree.CPP/actions?query=workflow%3Aros2)
 [![pixi (Conda)](https://github.com/BehaviorTree/BehaviorTree.CPP/actions/workflows/pixi.yaml/badge.svg)](https://github.com/BehaviorTree/BehaviorTree.CPP/actions/workflows/pixi.yaml)
 
+# 编译
+
+## Linux
+
+参照下文  How to Compile
+
+## Windows
+
+**安装依赖**
+
+- Visual Studio 2019
+- 安装 C++ 包管理工具 conan ： https://conan.io/
+- 安装 cmake
+
+ **编译**
+
+```
+conan profile detect
+conan install ../BehaviorTree.CPP --output-folder=. --build=missing
+cmake ../BehaviorTree.CPP -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"  -DCMAKE_CXX_FLAGS="/utf-8" -DCMAKE_C_FLAGS="/utf-8"
+cmake --build .  --config Release --parallel 
+```
+
 # BehaviorTree.CPP 4.6
 
 <p align="center"><img width=350 src="animated.svg"></p>
